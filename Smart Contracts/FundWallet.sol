@@ -68,6 +68,7 @@ contract FundWallet {
         contributors.length -= 1;
         ContributorRemoval(_contributor);
     }
+    //return contributions on removal if contributions have been made
 
     function getContributors() public constant returns (address[]){
         return contributors;
@@ -95,4 +96,5 @@ contract FundWallet {
             revert();
         }
     }
+    //make a single deposit function
 }
