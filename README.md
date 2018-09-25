@@ -1,5 +1,7 @@
 # Distributed-Liquidity-Pool
-A pooled fund which services liquidity on DEX's. 
+A pooled fund which services liquidity on DEX's.
+
+**Please Note that this entire repository is a work in progress.** 
 
 ## Components
 
