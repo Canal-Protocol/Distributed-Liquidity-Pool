@@ -10,6 +10,11 @@ contract FundWallet {
     mapping (address => bool) public isContributor;
     mapping (address => uint) public stake;
     address[] public contributors;
+    //experimental time periods
+    uint start;
+    uint raiseP;
+    uint opperateP;
+    uint liquidP;
 
     //modifiers
     modifier onlyAdmin() {
@@ -32,17 +37,42 @@ contract FundWallet {
         _;
     }
 
+    //need to test time based modifiers -- currently just conceptual
+    modifier inRaiseP() {
+        require(now < (start + raiseP));
+        _;
+    }
+
+    modifier inOpperateP() {
+        require(now < (start + raiseP + opperateP) && now > (start + raiseP));
+        _;
+    }
+
+    modifier inLiquidP() {
+        require(now < (start + raiseP + opperateP + liquidP) && now > (start + raiseP + opperateP));
+        _;
+    }
+
+    modifier inClaimP() {
+        require(now > (start + raiseP + opperateP + liquidP));
+        _;
+    }
+
     //events
     event ContributorAdded(address _contributor);
     event ContributorRemoval(address _contributor);
     event ContributorDeposit(address sender, uint value);
     event AdminDeposit(address sender, uint value);
 
-    function FundWallet(address _admin, uint _adminStake) public {
+    function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP) public {
         require(_admin != address(0));
         require(_adminStake > 0);
         admin = _admin;
         adminStake = _adminStake;
+        start = now;
+        raiseP = _raiseP * (24 hours);
+        opperateP = _opperateP * (24 hours);
+        liquidP = _liquidP * (24 hours);
     }
 
     function() public payable {
