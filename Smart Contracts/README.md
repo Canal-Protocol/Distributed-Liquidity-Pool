@@ -6,6 +6,7 @@ Currently Implemented:
 * Admin setup and stake.
 * Contributor addition/removal and deposits.
 * Tracking stakes.
+* Time based modifiers (need to test functionality).
 
 To Do:
 
