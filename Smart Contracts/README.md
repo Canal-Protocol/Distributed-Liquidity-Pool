@@ -7,12 +7,12 @@ Currently Implemented:
 * Contributor addition/removal and deposits.
 * Tracking stakes.
 * Time based modifiers (functionality tested [using this](https://github.com/ads365/Time-Based-Modifiers)).
+* Refunds (still need to add admin refund event).
 
 To Do:
 
 * Withdrawals/Claims.
-* Time period based functions.
-* Refunds.
+* Apply time periods to functions.
 * Change admin
 * Governance mechanisms.
 * Incentive scheme.
