@@ -62,6 +62,7 @@ contract FundWallet {
     event ContributorAdded(address _contributor);
     event ContributorRemoval(address _contributor);
     event ContributorDeposit(address sender, uint value);
+    event ContributorDepositReturn(address _contributor, uint value);
     event AdminDeposit(address sender, uint value);
 
     function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP) public {
@@ -97,6 +98,13 @@ contract FundWallet {
             }
         contributors.length -= 1;
         ContributorRemoval(_contributor);
+
+        if (stake[_contributor] > 0) {
+            _contributor.transfer(stake[_contributor]);
+            balance -= stake[_contributor];
+            delete stake[_contributor];
+            ContributorDepositReturn(_contributor, stake[_contributor]);
+        }
     }
     //return contributions on removal if contributions have been made
 
@@ -115,6 +123,24 @@ contract FundWallet {
         }
     }
 
+    function contributorRefund() public onlyContributor {
+        isContributor[msg.sender] = false;
+        for (uint i=0; i < contributors.length - 1; i++)
+            if (contributors[i] == msg.sender) {
+                contributors[i] = contributors[contributors.length - 1];
+                break;
+            }
+        contributors.length -= 1;
+        ContributorRemoval(msg.sender);
+
+        if (stake[msg.sender] > 0) {
+            msg.sender.transfer(stake[msg.sender]);
+            balance -= stake[msg.sender];
+            delete stake[msg.sender];
+            ContributorDepositReturn(msg.sender, stake[msg.sender]);
+        }
+    }
+
     function adminDeposit() public onlyAdmin adminHasNotStaked payable {
         if (msg.value == adminStake) {
             balance += msg.value;
@@ -126,5 +152,11 @@ contract FundWallet {
             revert();
         }
     }
-    //make a single deposit function
+
+    function adminRefund() public onlyAdmin adminHasStaked {
+        require(balance == adminStake);
+        admin.transfer(adminStake);
+        adminStaked = false;
+        balance -= adminStake;
+    }
 }
