@@ -6,7 +6,7 @@ Currently Implemented:
 * Admin setup and stake.
 * Contributor addition/removal and deposits.
 * Tracking stakes.
-* Time based modifiers (need to test functionality).
+* Time based modifiers (functionality tested [using this](https://github.com/ads365/Time-Based-Modifiers)).
 
 To Do:
 
