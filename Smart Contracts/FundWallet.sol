@@ -15,6 +15,9 @@ contract FundWallet {
     uint raiseP;
     uint opperateP;
     uint liquidP;
+    //admin operational withdrawal
+    uint public lastDay;
+    uint public withdrawnToday;
 
     //modifiers
     modifier onlyAdmin() {
@@ -162,4 +165,28 @@ contract FundWallet {
         AdminDepositReturned(msg.sender, adminStake);
     }
 
+    //still need to test functions below this:
+    function opsWithdraw(uint _amount) public onlyAdmin inOpperateP {
+        assert(isUnderLimit(_amount));
+        admin.transfer(_amount);
+        withdrawnToday += _amount;
+    }
+
+    function isUnderLimit(uint amount) internal returns (bool) {
+        if (now > lastDay + 24 hours) {
+            lastDay = now;
+            withdrawnToday = 0;
+        }
+        if (withdrawnToday + amount > adminStake || withdrawnToday + amount < withdrawnToday)
+            return false;
+        return true;
+    }
+
+    function calcMaxOpsWithdraw() public constant returns (uint)  {
+        if (now > lastDay + 24 hours)
+            return adminStake;
+        if (adminStake < withdrawnToday)
+            return 0;
+        return adminStake - withdrawnToday;
+    }
 }
