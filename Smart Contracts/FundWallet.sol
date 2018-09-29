@@ -28,12 +28,12 @@ contract FundWallet {
     }
 
     modifier adminHasStaked() {
-        require(adminStaked == true);
+        assert(adminStaked == true);
         _;
     }
 
     modifier adminHasNotStaked() {
-        require(adminStaked == false);
+        assert(adminStaked == false);
         _;
     }
 
@@ -64,6 +64,7 @@ contract FundWallet {
     event ContributorDeposit(address sender, uint value);
     event ContributorDepositReturn(address _contributor, uint value);
     event AdminDeposit(address sender, uint value);
+    event AdminDepositReturned(address sender, uint value);
 
     function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP) public {
         require(_admin != address(0));
@@ -80,7 +81,7 @@ contract FundWallet {
         revert();
     }
 
-    function addContributor(address _contributor) public onlyAdmin {
+    function addContributor(address _contributor) public onlyAdmin inRaiseP {
         require(!isContributor[ _contributor]); //only new contributor
         require(_contributor != admin);
         isContributor[ _contributor] = true;
@@ -88,7 +89,7 @@ contract FundWallet {
         ContributorAdded( _contributor);
     }
 
-    function removeContributor(address _contributor) public onlyAdmin {
+    function removeContributor(address _contributor) public onlyAdmin inRaiseP {
         require(isContributor[_contributor]);
         isContributor[_contributor] = false;
         for (uint i=0; i < contributors.length - 1; i++)
@@ -112,7 +113,7 @@ contract FundWallet {
         return contributors;
     }
 
-    function contributorDeposit() public onlyContributor adminHasStaked payable {
+    function contributorDeposit() public onlyContributor adminHasStaked inRaiseP payable {
         if (adminStake >= msg.value && msg.value > 0 && stake[msg.sender] < adminStake) {
             balance += msg.value;
             stake[msg.sender] += msg.value;
@@ -123,7 +124,7 @@ contract FundWallet {
         }
     }
 
-    function contributorRefund() public onlyContributor {
+    function contributorRefund() public onlyContributor inRaiseP {
         isContributor[msg.sender] = false;
         for (uint i=0; i < contributors.length - 1; i++)
             if (contributors[i] == msg.sender) {
@@ -141,7 +142,7 @@ contract FundWallet {
         }
     }
 
-    function adminDeposit() public onlyAdmin adminHasNotStaked payable {
+    function adminDeposit() public onlyAdmin adminHasNotStaked inRaiseP payable {
         if (msg.value == adminStake) {
             balance += msg.value;
             stake[msg.sender] += msg.value;
@@ -153,10 +154,12 @@ contract FundWallet {
         }
     }
 
-    function adminRefund() public onlyAdmin adminHasStaked {
+    function adminRefund() public onlyAdmin adminHasStaked inRaiseP {
         require(balance == adminStake);
         admin.transfer(adminStake);
         adminStaked = false;
         balance -= adminStake;
+        AdminDepositReturned(msg.sender, adminStake);
     }
+
 }
