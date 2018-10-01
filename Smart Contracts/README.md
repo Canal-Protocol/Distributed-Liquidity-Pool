@@ -8,14 +8,14 @@ Currently Implemented:
 * Tracking stakes.
 * Time based modifiers (functionality tested [using this](https://github.com/ads365/Time-Based-Modifiers)).
 * Refunds.
+* Withdrawals/Claims. (to be tested)
+* Apply time periods to functions.
+* Incentive scheme. (to be tested)
 
 To Do:
 
-* Withdrawals/Claims.
-* Apply time periods to functions.
 * Change admin
 * Governance mechanisms.
-* Incentive scheme.
 * Comprehensive comments.
 
 **Do not use outside of test environments**
