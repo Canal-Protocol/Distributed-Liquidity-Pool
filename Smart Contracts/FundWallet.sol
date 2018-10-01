@@ -6,11 +6,14 @@ contract FundWallet {
     address public admin;
     uint public adminStake;
     uint public balance;
+    uint public endBalance;
     bool public adminStaked;
+    bool public endBalanceLogged;
     mapping (address => bool) public isContributor;
+    mapping (address => bool) public hasClaimed;
     mapping (address => uint) public stake;
     address[] public contributors;
-    //experimental time periods
+    //experimental time periods set to minutes for testing
     uint start;
     uint raiseP;
     uint opperateP;
@@ -18,6 +21,8 @@ contract FundWallet {
     //admin operational withdrawal
     uint public lastDay;
     uint public withdrawnToday;
+    //admin reward
+    uint adminCarry; //in basis points (1% = 100bps)
 
     //modifiers
     modifier onlyAdmin() {
@@ -37,6 +42,21 @@ contract FundWallet {
 
     modifier adminHasNotStaked() {
         assert(adminStaked == false);
+        _;
+    }
+
+    modifier endBalanceNotLogged() {
+        assert(endBalanceLogged == false);
+        _;
+    }
+
+    modifier endBalanceIsLogged() {
+        assert(endBalanceLogged == true);
+        _;
+    }
+
+    modifier hasNotClaimed() {
+        require(!hasClaimed[msg.sender]);
         _;
     }
 
@@ -75,9 +95,10 @@ contract FundWallet {
         admin = _admin;
         adminStake = _adminStake;
         start = now;
-        raiseP = _raiseP * (24 hours);
-        opperateP = _opperateP * (24 hours);
-        liquidP = _liquidP * (24 hours);
+        //set to minutes for testing
+        raiseP = _raiseP * (60 seconds);
+        opperateP = _opperateP * (60 seconds);
+        liquidP = _liquidP * (60 seconds);
     }
 
     function() public payable {
@@ -165,7 +186,6 @@ contract FundWallet {
         AdminDepositReturned(msg.sender, adminStake);
     }
 
-    //still need to test functions below this:
     function opsWithdraw(uint _amount) public onlyAdmin inOpperateP {
         assert(isUnderLimit(_amount));
         admin.transfer(_amount);
@@ -189,4 +209,39 @@ contract FundWallet {
             return 0;
         return adminStake - withdrawnToday;
     }
+
+    //UNTESTED BELOW - just conceptual
+
+    //maybe include modifier for admin and contributor
+    function logEndBal() public inClaimP endBalanceNotLogged {
+        endBalance = address(this).balance;
+        endBalanceLogged = true;
+    }
+
+    //need to test below and enforce best practices for division (rounding etc)
+    function adminClaim() public onlyAdmin inClaimP endBalanceIsLogged hasNotClaimed {
+        if (endBalance > balance) {
+            admin.transfer((endBalance - balance) * (adminCarry/10000)); //have variable for adminReward
+            admin.transfer((endBalance - balance)*((10000-adminCarry)/10000)*(adminStake/balance)); // profit share
+            admin.transfer(adminStake); //initial stake
+            hasClaimed[msg.sender] = true;
+        }
+        else {
+            admin.transfer((endBalance)*(adminStake/balance));
+            hasClaimed[msg.sender] = true;
+        }
+    }
+
+    function contributorClaim() public onlyContributor inClaimP endBalanceIsLogged hasNotClaimed {
+        if (endBalance > balance) {
+            msg.sender.transfer((endBalance - balance)*((10000-adminCarry)/10000)*(stake[msg.sender]/balance)); // profit share
+            msg.sender.transfer(stake[msg.sender]); //initial stake
+            hasClaimed[msg.sender] = true;
+        }
+        else {
+            msg.sender.transfer((endBalance)*(stake[msg.sender]/balance));
+            hasClaimed[msg.sender] = true;
+        }
+    }
+
 }
