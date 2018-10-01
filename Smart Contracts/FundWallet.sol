@@ -13,7 +13,7 @@ contract FundWallet {
     mapping (address => bool) public hasClaimed;
     mapping (address => uint) public stake;
     address[] public contributors;
-    //experimental time periods set to minutes for testing
+    //experimental time periods
     uint start;
     uint raiseP;
     uint opperateP;
@@ -89,20 +89,19 @@ contract FundWallet {
     event AdminDeposit(address sender, uint value);
     event AdminDepositReturned(address sender, uint value);
 
-    function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP) public {
+    function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry) public {
         require(_admin != address(0));
         require(_adminStake > 0);
         admin = _admin;
         adminStake = _adminStake;
         start = now;
-        //set to minutes for testing
         raiseP = _raiseP * (60 seconds);
         opperateP = _opperateP * (60 seconds);
         liquidP = _liquidP * (60 seconds);
+        adminCarry = _adminCarry; //bps
     }
 
     function() public payable {
-        revert();
     }
 
     function addContributor(address _contributor) public onlyAdmin inRaiseP {
@@ -221,25 +220,25 @@ contract FundWallet {
     //need to test below and enforce best practices for division (rounding etc)
     function adminClaim() public onlyAdmin inClaimP endBalanceIsLogged hasNotClaimed {
         if (endBalance > balance) {
-            admin.transfer((endBalance - balance) * (adminCarry/10000)); //have variable for adminReward
-            admin.transfer((endBalance - balance)*((10000-adminCarry)/10000)*(adminStake/balance)); // profit share
+            admin.transfer(((endBalance - balance)*(adminCarry))/10000); //have variable for adminReward
+            admin.transfer(((((endBalance - balance)*(10000-adminCarry))/10000)*adminStake)/balance); // profit share
             admin.transfer(adminStake); //initial stake
             hasClaimed[msg.sender] = true;
         }
         else {
-            admin.transfer((endBalance)*(adminStake/balance));
+            admin.transfer((endBalance*adminStake)/balance);
             hasClaimed[msg.sender] = true;
         }
     }
 
     function contributorClaim() public onlyContributor inClaimP endBalanceIsLogged hasNotClaimed {
         if (endBalance > balance) {
-            msg.sender.transfer((endBalance - balance)*((10000-adminCarry)/10000)*(stake[msg.sender]/balance)); // profit share
+            msg.sender.transfer(((((endBalance - balance)*(10000-adminCarry))/10000)*stake[msg.sender])/balance); // profit share
             msg.sender.transfer(stake[msg.sender]); //initial stake
             hasClaimed[msg.sender] = true;
         }
         else {
-            msg.sender.transfer((endBalance)*(stake[msg.sender]/balance));
+            msg.sender.transfer((endBalance*stake[msg.sender])/balance);
             hasClaimed[msg.sender] = true;
         }
     }
