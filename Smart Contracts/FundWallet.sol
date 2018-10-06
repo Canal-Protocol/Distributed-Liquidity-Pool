@@ -1,9 +1,12 @@
 pragma solidity 0.4.18;
 
+
+/// @title Fund Wallet - Fund raising wallet which distributes ending balance according investment stake
 contract FundWallet {
 
     //storage
     address public admin;
+    address public backupAdmin;
     uint public adminStake;
     uint public balance;
     uint public endBalance;
@@ -27,6 +30,11 @@ contract FundWallet {
     //modifiers
     modifier onlyAdmin() {
         require(msg.sender == admin);
+        _;
+    }
+
+    modifier onlyBackupAdmin() {
+        require(msg.sender == backupAdmin);
         _;
     }
 
@@ -89,10 +97,12 @@ contract FundWallet {
     event AdminDeposit(address sender, uint value);
     event AdminDepositReturned(address sender, uint value);
 
-    function FundWallet(address _admin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry) public {
+
+    function FundWallet(address _admin, address _backupAdmin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry) public {
         require(_admin != address(0));
         require(_adminStake > 0);
         admin = _admin;
+        backupAdmin = _backupAdmin;
         adminStake = _adminStake;
         start = now;
         raiseP = _raiseP * (60 seconds);
@@ -102,6 +112,10 @@ contract FundWallet {
     }
 
     function() public payable {
+    }
+
+    function changeAdmin(address _newAdmin) public onlyBackupAdmin {
+        admin = _newAdmin;
     }
 
     function addContributor(address _contributor) public onlyAdmin inRaiseP {
@@ -208,8 +222,6 @@ contract FundWallet {
             return 0;
         return adminStake - withdrawnToday;
     }
-
-    //UNTESTED BELOW - just conceptual
 
     //maybe include modifier for admin and contributor
     function logEndBal() public inClaimP endBalanceNotLogged {
