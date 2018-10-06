@@ -11,11 +11,11 @@ Currently Implemented:
 * Withdrawals/Claims.
 * Apply time periods to functions.
 * Incentive scheme.
+* Change admin
 
 To Do:
 
-* Change admin
-* Governance mechanisms.
+* Governance mechanisms (set max investment, cease fund from admin).
 * Comprehensive comments.
 
 **Do not use outside of test environments**
