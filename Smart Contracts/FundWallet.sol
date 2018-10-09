@@ -1,7 +1,8 @@
 pragma solidity 0.4.18;
 
 
-/// @title Fund Wallet - Fund raising wallet which distributes ending balance according investment stake
+/// @title Fund Wallet - Fund raising and distribution wallet according to stake and incentive scheme.
+/// @dev Not fully tested, use only in test environment.
 contract FundWallet {
 
     //storage
@@ -98,6 +99,15 @@ contract FundWallet {
     event AdminDepositReturned(address sender, uint value);
 
 
+    /// @notice Constructor, initialises wallet with admins, time periods, stake and incentive scheme.
+    /// @dev Should break constructor up into a few components.
+    /// @param _admin Is main opperator address.
+    /// @param _backupAdmin Is an address which can change the admin address - recommend cold wallet.
+    /// @param _adminStake Is the amount that the admin will contribute to the fund.
+    /// @param _raiseP The amount of time during which contributors and admin can contribute to the fund. In minutes for testing.
+    /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
+    /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
+    /// @param _adminCarry The admins performance fee in profitable scenario, measured in basis points (1% = 100bps).
     function FundWallet(address _admin, address _backupAdmin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry) public {
         require(_admin != address(0));
         require(_adminStake > 0);
@@ -111,13 +121,20 @@ contract FundWallet {
         adminCarry = _adminCarry; //bps
     }
 
+    /// @notice Fallback function - recieves ETH but doesn't alter contributor stakes or raised balance.
     function() public payable {
     }
 
+    /// @notice Function to change the admins address
+    /// @dev Only available to the back up admin.
+    /// @param _newAdmin address of the new admin.
     function changeAdmin(address _newAdmin) public onlyBackupAdmin {
         admin = _newAdmin;
     }
 
+    /// @notice Function to add contributor address.
+    /// @dev Only available to admin and in the raising period.
+    /// @param _contributor Address of the new contributor.
     function addContributor(address _contributor) public onlyAdmin inRaiseP {
         require(!isContributor[ _contributor]); //only new contributor
         require(_contributor != admin);
@@ -126,6 +143,9 @@ contract FundWallet {
         ContributorAdded( _contributor);
     }
 
+    /// @notice Function to remove contributor address.
+    /// @dev Only available to admin and in the raising period. Returns balance of contributor if they have deposited.
+    /// @param _contributor Address of the contributor to be removed.
     function removeContributor(address _contributor) public onlyAdmin inRaiseP {
         require(isContributor[_contributor]);
         isContributor[_contributor] = false;
@@ -144,12 +164,14 @@ contract FundWallet {
             ContributorDepositReturn(_contributor, stake[_contributor]);
         }
     }
-    //return contributions on removal if contributions have been made
-
+    
+    /// @notice Function to get contributor addresses.
     function getContributors() public constant returns (address[]){
         return contributors;
     }
-
+    
+    /// @notice Function for contributor to deposit funds.
+    /// @dev Only available to contributors after admin had deposited their stake, and in the raising period.
     function contributorDeposit() public onlyContributor adminHasStaked inRaiseP payable {
         if (adminStake >= msg.value && msg.value > 0 && stake[msg.sender] < adminStake) {
             balance += msg.value;
@@ -160,7 +182,9 @@ contract FundWallet {
             revert();
         }
     }
-
+    
+    /// @notice Function for contributor to reclaim their deposit.
+    /// @dev Only available to contributor in the raising period. Removes contributor on refund.
     function contributorRefund() public onlyContributor inRaiseP {
         isContributor[msg.sender] = false;
         for (uint i=0; i < contributors.length - 1; i++)
@@ -179,6 +203,8 @@ contract FundWallet {
         }
     }
 
+    /// @notice Function for admin to deposit their stake.
+    /// @dev Only available to admin and in the raising period.
     function adminDeposit() public onlyAdmin adminHasNotStaked inRaiseP payable {
         if (msg.value == adminStake) {
             balance += msg.value;
@@ -190,7 +216,9 @@ contract FundWallet {
             revert();
         }
     }
-
+    
+    /// @notice Funtion for admin to reclaim their contribution/stake.
+    /// @dev Only available to admin and in the raising period and if admin is the only one who has contributed to the fund.
     function adminRefund() public onlyAdmin adminHasStaked inRaiseP {
         require(balance == adminStake);
         admin.transfer(adminStake);
@@ -198,13 +226,17 @@ contract FundWallet {
         balance -= adminStake;
         AdminDepositReturned(msg.sender, adminStake);
     }
-
+    
+    /// @notice Funtion for admin to withdraw funds whild fund is opperating.
+    /// @dev Only available to admin and in the opperating period, and limited by their stake in 24hr period.
+    /// @param _amount Funds to withdraw.
     function opsWithdraw(uint _amount) public onlyAdmin inOpperateP {
         assert(isUnderLimit(_amount));
         admin.transfer(_amount);
         withdrawnToday += _amount;
     }
 
+    /// @notice Internal function to check that withdrawal is below admin stake in 24hrs.
     function isUnderLimit(uint amount) internal returns (bool) {
         if (now > lastDay + 24 hours) {
             lastDay = now;
@@ -214,7 +246,8 @@ contract FundWallet {
             return false;
         return true;
     }
-
+    
+    /// @notice Funtion to check remaining withdrawal balance of admin.
     function calcMaxOpsWithdraw() public constant returns (uint)  {
         if (now > lastDay + 24 hours)
             return adminStake;
@@ -223,13 +256,15 @@ contract FundWallet {
         return adminStake - withdrawnToday;
     }
 
-    //maybe include modifier for admin and contributor
+    /// @notice Funtion to log the ending balance after liquidation period. Used as point of reference to calculate profit/loss.
+    /// @dev Only available in claim period and only available once.
     function logEndBal() public inClaimP endBalanceNotLogged {
         endBalance = address(this).balance;
         endBalanceLogged = true;
     }
 
-    //need to test below and enforce best practices for division (rounding etc)
+    /// @notice Funtion for admin to calim their payout.
+    /// @dev Only available to admin in claim period and once the ending balance has been logged. Payout depends on profit or loss.
     function adminClaim() public onlyAdmin inClaimP endBalanceIsLogged hasNotClaimed {
         if (endBalance > balance) {
             admin.transfer(((endBalance - balance)*(adminCarry))/10000); //have variable for adminReward
@@ -243,6 +278,8 @@ contract FundWallet {
         }
     }
 
+    /// @notice Funtion for contributor to claim their payout.
+    /// @dev Only available to contributor in claim period and once the ending balance has been logged. Payout depends on profit or loss.
     function contributorClaim() public onlyContributor inClaimP endBalanceIsLogged hasNotClaimed {
         if (endBalance > balance) {
             msg.sender.transfer(((((endBalance - balance)*(10000-adminCarry))/10000)*stake[msg.sender])/balance); // profit share
