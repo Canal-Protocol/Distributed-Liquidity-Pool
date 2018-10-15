@@ -69,7 +69,6 @@ contract FundWallet {
         _;
     }
 
-    //need to test time based modifiers -- currently just conceptual
     modifier inRaiseP() {
         require(now < (start + raiseP));
         _;
