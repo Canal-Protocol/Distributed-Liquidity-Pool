@@ -12,10 +12,10 @@ Currently Implemented:
 * Apply time periods to functions.
 * Incentive scheme.
 * Change admin
+* Comprehensive comments.
 
 To Do:
 
 * Governance mechanisms (set max investment, cease fund from admin).
-* Comprehensive comments.
 
 **Do not use outside of test environments**
