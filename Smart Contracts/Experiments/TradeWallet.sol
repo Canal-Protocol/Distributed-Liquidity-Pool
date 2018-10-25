@@ -18,12 +18,14 @@ interface ERC20 {
 
 contract TradeWallet {
 
-    address kyberNetwork;
+    // address KN or Reserve?;
 
+    /* modifier for KN or Reserve
     modifier onlyKyber {
         require(msg.sender == kyberNetwork);
         _;
     }
+    */
 
     event TokenPulled(ERC20 token, uint amount, address sendTo);
 
@@ -41,7 +43,7 @@ contract TradeWallet {
     /**
      * @dev Send ether to the destination address
      */
-    function withdrawEther(uint amount, address sendTo) external onlyKyber {
+    function pullEther(uint amount, address sendTo) external onlyKyber {
         sendTo.transfer(amount);
         EtherPulled(amount, sendTo);
     }
