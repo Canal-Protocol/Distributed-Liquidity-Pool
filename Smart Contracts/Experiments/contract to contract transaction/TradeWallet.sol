@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
-// EXPERIMENTAL ONLY - Funds will be FROZEN
+// EXPERIMENTAL ONLY
 
-//functions to allow for kyber reserve token wallet to be a smart contract.
+//functions allow for kyber reserve to source funds from another smart contract. To be integrate with FundWallet.
 
 
 interface ERC20 {
@@ -25,15 +25,25 @@ contract TradeWallet {
         require(msg.sender == admin);
         _;
     }
-
+    
+    /**
+     * @dev costructor function
+     * @param _reserve is the corresponding Kyber Reserve address.
+     */
     function TradeWallet(address _admin, address _reserve) public {
         admin = _admin;
         reserve = _reserve;
     }
-
+    
+    /**
+     * @dev fallback function deposits ether
+     */
     function() public payable {
     }
-
+    
+    /**
+     * @dev set/change reserve address
+     */
     function setReserve (address _newReserve) onlyAdmin public {
         reserve = _newReserve;
     }
