@@ -16,35 +16,26 @@ interface ERC20 {
     event Approval(address indexed _owner, address indexed _spender, uint _value);
 }
 
-contract TradeWallet {
+interface TradeWalletInterface {
+    function pullToken(ERC20 token, uint amount, address sendTo) external;
+    function pullEther(uint amount, address sendTo) external;
+}
 
-    // address KN or Reserve?;
+contract TestTradeW {
 
-    /* modifier for KN or Reserve
-    modifier onlyKyber {
-        require(msg.sender == kyberNetwork);
-        _;
-    }
-    */
+    TradeWalletInterface public TradeWallet;
 
-    event TokenPulled(ERC20 token, uint amount, address sendTo);
-
-    /**
-     * @dev send erc20token to the destination address
-     * @param token ERC20 The address of the token contract
-     */
-    function pullToken(ERC20 token, uint amount, address sendTo) external onlyKyber {
-        require(token.transfer(sendTo, amount));
-        TokenPulled(token, amount, sendTo);
+    function TestTradeW (TradeWalletInterface _TradeWallet) public {
+        TradeWallet = _TradeWallet;
     }
 
-    event EtherPulled(uint amount, address sendTo);
+    function tokenPuller (ERC20 destToken, address destAddress, uint destAmount) public {
+        TradeWallet.pullToken(destToken, destAmount, destAddress);
 
-    /**
-     * @dev Send ether to the destination address
-     */
-    function pullEther(uint amount, address sendTo) external onlyKyber {
-        sendTo.transfer(amount);
-        EtherPulled(amount, sendTo);
     }
+
+    function etherPuller (address destAddress, uint destAmount) public {
+        TradeWallet.pullEther(destAmount, destAddress);
+    }
+
 }
