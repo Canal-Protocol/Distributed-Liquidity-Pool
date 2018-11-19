@@ -1,8 +1,20 @@
 pragma solidity 0.4.18;
 
-
 /// @title Fund Wallet - Fund raising and distribution wallet according to stake and incentive scheme.
 /// @dev Not fully tested, use only in test environment.
+
+
+interface ERC20 {
+    function totalSupply() public view returns (uint supply);
+    function balanceOf(address _owner) public view returns (uint balance);
+    function transfer(address _to, uint _value) public returns (bool success);
+    function transferFrom(address _from, address _to, uint _value) public returns (bool success);
+    function approve(address _spender, uint _value) public returns (bool success);
+    function allowance(address _owner, address _spender) public view returns (uint remaining);
+    function decimals() public view returns(uint digits);
+    event Approval(address indexed _owner, address indexed _spender, uint _value);
+}
+
 contract FundWallet {
 
     //storage
@@ -27,6 +39,8 @@ contract FundWallet {
     uint public withdrawnToday;
     //admin reward
     uint adminCarry; //in basis points (1% = 100bps)
+    //Kyber Reserve contract address
+    address reserve;
 
     //modifiers
     modifier onlyAdmin() {
@@ -36,6 +50,11 @@ contract FundWallet {
 
     modifier onlyBackupAdmin() {
         require(msg.sender == backupAdmin);
+        _;
+    }
+
+    modifier onlyReserve() {
+        require(msg.sender == reserve);
         _;
     }
 
@@ -107,7 +126,7 @@ contract FundWallet {
     /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
     /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
     /// @param _adminCarry The admins performance fee in profitable scenario, measured in basis points (1% = 100bps).
-    function FundWallet(address _admin, address _backupAdmin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry) public {
+    function FundWallet(address _admin, address _backupAdmin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry, address _reserve) public {
         require(_admin != address(0));
         require(_adminStake > 0);
         admin = _admin;
@@ -118,6 +137,7 @@ contract FundWallet {
         opperateP = _opperateP * (60 seconds);
         liquidP = _liquidP * (60 seconds);
         adminCarry = _adminCarry; //bps
+        reserve = _reserve;
     }
 
     /// @notice Fallback function - recieves ETH but doesn't alter contributor stakes or raised balance.
@@ -129,6 +149,11 @@ contract FundWallet {
     /// @param _newAdmin address of the new admin.
     function changeAdmin(address _newAdmin) public onlyBackupAdmin {
         admin = _newAdmin;
+    }
+
+    /// @dev change reserve address
+    function changeReserve (address _newReserve) public onlyAdmin {
+        reserve = _newReserve;
     }
 
     /// @notice Function to add contributor address.
@@ -163,12 +188,12 @@ contract FundWallet {
             ContributorDepositReturn(_contributor, stake[_contributor]);
         }
     }
-    
+
     /// @notice Function to get contributor addresses.
     function getContributors() public constant returns (address[]){
         return contributors;
     }
-    
+
     /// @notice Function for contributor to deposit funds.
     /// @dev Only available to contributors after admin had deposited their stake, and in the raising period.
     function contributorDeposit() public onlyContributor adminHasStaked inRaiseP payable {
@@ -181,7 +206,7 @@ contract FundWallet {
             revert();
         }
     }
-    
+
     /// @notice Function for contributor to reclaim their deposit.
     /// @dev Only available to contributor in the raising period. Removes contributor on refund.
     function contributorRefund() public onlyContributor inRaiseP {
@@ -215,7 +240,7 @@ contract FundWallet {
             revert();
         }
     }
-    
+
     /// @notice Funtion for admin to reclaim their contribution/stake.
     /// @dev Only available to admin and in the raising period and if admin is the only one who has contributed to the fund.
     function adminRefund() public onlyAdmin adminHasStaked inRaiseP {
@@ -225,7 +250,7 @@ contract FundWallet {
         balance -= adminStake;
         AdminDepositReturned(msg.sender, adminStake);
     }
-    
+
     /// @notice Funtion for admin to withdraw funds whild fund is opperating.
     /// @dev Only available to admin and in the opperating period, and limited by their stake in 24hr period.
     /// @param _amount Funds to withdraw.
@@ -245,7 +270,7 @@ contract FundWallet {
             return false;
         return true;
     }
-    
+
     /// @notice Funtion to check remaining withdrawal balance of admin.
     function calcMaxOpsWithdraw() public constant returns (uint)  {
         if (now > lastDay + 24 hours)
@@ -289,6 +314,27 @@ contract FundWallet {
             msg.sender.transfer((endBalance*stake[msg.sender])/balance);
             hasClaimed[msg.sender] = true;
         }
+    }
+
+    //functions to allow trading with reserve address
+
+    event TokenPulled(ERC20 token, uint amount, address sendTo);
+
+    /// @dev send erc20token to the destination address
+    /// @param token ERC20 The address of the token contract
+    function pullToken(ERC20 token, uint amount, address sendTo) external onlyReserve {
+        require(msg.sender == reserve);
+        require(token.transfer(sendTo, amount));
+        TokenPulled(token, amount, sendTo);
+    }
+
+    event EtherPulled(uint amount, address sendTo);
+
+    ///@dev Send ether to the destination address
+    function pullEther(uint amount, address sendTo) external onlyReserve {
+        require(msg.sender == reserve);
+        sendTo.transfer(amount);
+        EtherPulled(amount, sendTo);
     }
 
 }
