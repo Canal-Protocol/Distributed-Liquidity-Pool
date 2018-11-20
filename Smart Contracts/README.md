@@ -13,9 +13,11 @@ Currently Implemented:
 * Incentive scheme.
 * Change admin
 * Comprehensive comments.
+* Push and pull funds from FundWallet.
 
 To Do:
 
 * Governance mechanisms (set max investment, cease fund from admin).
+* Integrate with Kyber Reserve.
 
 **Do not use outside of test environments**
