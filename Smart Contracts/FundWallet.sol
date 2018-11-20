@@ -21,7 +21,7 @@ contract FundWallet {
     address public admin;
     address public backupAdmin;
     uint public adminStake;
-    uint public balance;
+    uint public raisedBalance;
     uint public endBalance;
     bool public adminStaked;
     bool public endBalanceLogged;
@@ -31,6 +31,7 @@ contract FundWallet {
     address[] public contributors;
     //experimental time periods
     uint start;
+    uint adminP;
     uint raiseP;
     uint opperateP;
     uint liquidP;
@@ -88,23 +89,28 @@ contract FundWallet {
         _;
     }
 
+    modifier inAdminP() {
+        require(now < (start + adminP));
+        _;
+    }
+
     modifier inRaiseP() {
-        require(now < (start + raiseP));
+        require(now < (start + adminP + raiseP) && now > (start + adminP));
         _;
     }
 
     modifier inOpperateP() {
-        require(now < (start + raiseP + opperateP) && now > (start + raiseP));
+        require(now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP));
         _;
     }
 
     modifier inLiquidP() {
-        require(now < (start + raiseP + opperateP + liquidP) && now > (start + raiseP + opperateP));
+        require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP + opperateP));
         _;
     }
 
     modifier inClaimP() {
-        require(now > (start + raiseP + opperateP + liquidP));
+        require(now > (start + adminP + raiseP + opperateP + liquidP));
         _;
     }
 
@@ -115,28 +121,44 @@ contract FundWallet {
     event ContributorDepositReturn(address _contributor, uint value);
     event AdminDeposit(address sender, uint value);
     event AdminDepositReturned(address sender, uint value);
+    event TokenPulled(ERC20 token, uint amount, address sendTo);
+    event EtherPulled(uint amount, address sendTo);
 
 
-    /// @notice Constructor, initialises wallet with admins, time periods, stake and incentive scheme.
-    /// @dev Should break constructor up into a few components.
+    /// @notice Constructor, initialises admin wallets.
     /// @param _admin Is main opperator address.
     /// @param _backupAdmin Is an address which can change the admin address - recommend cold wallet.
+    function FundWallet(address _admin, address _backupAdmin) public {
+        require(_admin != address(0));
+        admin = _admin;
+        backupAdmin = _backupAdmin;
+    }
+
+    /// @notice function to set the stake and incentive scheme for the admin;
     /// @param _adminStake Is the amount that the admin will contribute to the fund.
+    /// @param _adminCarry The admins performance fee in profitable scenario, measured in basis points (1% = 100bps).
+    function setFundScheme(uint _adminStake, uint _adminCarry) public onlyAdmin inAdminP {
+        require(_adminStake > 0);
+        adminStake = _adminStake;
+        adminCarry = _adminCarry; //bps
+    }
+
+    /// @notice function to set time periods.
+    /// @param _adminP The amount of time during which the admin can set fund parameters and add contributors.
     /// @param _raiseP The amount of time during which contributors and admin can contribute to the fund. In minutes for testing.
     /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
     /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
-    /// @param _adminCarry The admins performance fee in profitable scenario, measured in basis points (1% = 100bps).
-    function FundWallet(address _admin, address _backupAdmin, uint _adminStake, uint _raiseP, uint _opperateP, uint _liquidP, uint _adminCarry, address _reserve) public {
-        require(_admin != address(0));
-        require(_adminStake > 0);
-        admin = _admin;
-        backupAdmin = _backupAdmin;
-        adminStake = _adminStake;
+    function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public onlyAdmin inAdminP {
         start = now;
+        adminP = _adminP * (60 seconds);
         raiseP = _raiseP * (60 seconds);
         opperateP = _opperateP * (60 seconds);
         liquidP = _liquidP * (60 seconds);
-        adminCarry = _adminCarry; //bps
+    }
+
+    /// @dev set or change reserve address
+    /// @param _reserve the address of corresponding kyber reserve.
+    function setReserve (address _reserve) public onlyAdmin inAdminP {
         reserve = _reserve;
     }
 
@@ -151,15 +173,10 @@ contract FundWallet {
         admin = _newAdmin;
     }
 
-    /// @dev change reserve address
-    function changeReserve (address _newReserve) public onlyAdmin {
-        reserve = _newReserve;
-    }
-
     /// @notice Function to add contributor address.
     /// @dev Only available to admin and in the raising period.
     /// @param _contributor Address of the new contributor.
-    function addContributor(address _contributor) public onlyAdmin inRaiseP {
+    function addContributor(address _contributor) public onlyAdmin inAdminP {
         require(!isContributor[ _contributor]); //only new contributor
         require(_contributor != admin);
         isContributor[ _contributor] = true;
@@ -170,7 +187,7 @@ contract FundWallet {
     /// @notice Function to remove contributor address.
     /// @dev Only available to admin and in the raising period. Returns balance of contributor if they have deposited.
     /// @param _contributor Address of the contributor to be removed.
-    function removeContributor(address _contributor) public onlyAdmin inRaiseP {
+    function removeContributor(address _contributor) public onlyAdmin inAdminP {
         require(isContributor[_contributor]);
         isContributor[_contributor] = false;
         for (uint i=0; i < contributors.length - 1; i++)
@@ -180,13 +197,6 @@ contract FundWallet {
             }
         contributors.length -= 1;
         ContributorRemoval(_contributor);
-
-        if (stake[_contributor] > 0) {
-            _contributor.transfer(stake[_contributor]);
-            balance -= stake[_contributor];
-            delete stake[_contributor];
-            ContributorDepositReturn(_contributor, stake[_contributor]);
-        }
     }
 
     /// @notice Function to get contributor addresses.
@@ -198,7 +208,7 @@ contract FundWallet {
     /// @dev Only available to contributors after admin had deposited their stake, and in the raising period.
     function contributorDeposit() public onlyContributor adminHasStaked inRaiseP payable {
         if (adminStake >= msg.value && msg.value > 0 && stake[msg.sender] < adminStake) {
-            balance += msg.value;
+            raisedBalance += msg.value;
             stake[msg.sender] += msg.value;
             ContributorDeposit(msg.sender, msg.value);
         }
@@ -221,7 +231,7 @@ contract FundWallet {
 
         if (stake[msg.sender] > 0) {
             msg.sender.transfer(stake[msg.sender]);
-            balance -= stake[msg.sender];
+            raisedBalance -= stake[msg.sender];
             delete stake[msg.sender];
             ContributorDepositReturn(msg.sender, stake[msg.sender]);
         }
@@ -231,7 +241,7 @@ contract FundWallet {
     /// @dev Only available to admin and in the raising period.
     function adminDeposit() public onlyAdmin adminHasNotStaked inRaiseP payable {
         if (msg.value == adminStake) {
-            balance += msg.value;
+            raisedBalance += msg.value;
             stake[msg.sender] += msg.value;
             adminStaked = true;
             AdminDeposit(msg.sender, msg.value);
@@ -244,10 +254,10 @@ contract FundWallet {
     /// @notice Funtion for admin to reclaim their contribution/stake.
     /// @dev Only available to admin and in the raising period and if admin is the only one who has contributed to the fund.
     function adminRefund() public onlyAdmin adminHasStaked inRaiseP {
-        require(balance == adminStake);
+        require(raisedBalance == adminStake);
         admin.transfer(adminStake);
         adminStaked = false;
-        balance -= adminStake;
+        raisedBalance -= adminStake;
         AdminDepositReturned(msg.sender, adminStake);
     }
 
@@ -290,14 +300,14 @@ contract FundWallet {
     /// @notice Funtion for admin to calim their payout.
     /// @dev Only available to admin in claim period and once the ending balance has been logged. Payout depends on profit or loss.
     function adminClaim() public onlyAdmin inClaimP endBalanceIsLogged hasNotClaimed {
-        if (endBalance > balance) {
-            admin.transfer(((endBalance - balance)*(adminCarry))/10000); //have variable for adminReward
-            admin.transfer(((((endBalance - balance)*(10000-adminCarry))/10000)*adminStake)/balance); // profit share
+        if (endBalance > raisedBalance) {
+            admin.transfer(((endBalance - raisedBalance)*(adminCarry))/10000); //have variable for adminReward
+            admin.transfer(((((endBalance - raisedBalance)*(10000-adminCarry))/10000)*adminStake)/raisedBalance); // profit share
             admin.transfer(adminStake); //initial stake
             hasClaimed[msg.sender] = true;
         }
         else {
-            admin.transfer((endBalance*adminStake)/balance);
+            admin.transfer((endBalance*adminStake)/raisedBalance);
             hasClaimed[msg.sender] = true;
         }
     }
@@ -305,20 +315,18 @@ contract FundWallet {
     /// @notice Funtion for contributor to claim their payout.
     /// @dev Only available to contributor in claim period and once the ending balance has been logged. Payout depends on profit or loss.
     function contributorClaim() public onlyContributor inClaimP endBalanceIsLogged hasNotClaimed {
-        if (endBalance > balance) {
-            msg.sender.transfer(((((endBalance - balance)*(10000-adminCarry))/10000)*stake[msg.sender])/balance); // profit share
+        if (endBalance > raisedBalance) {
+            msg.sender.transfer(((((endBalance - raisedBalance)*(10000-adminCarry))/10000)*stake[msg.sender])/raisedBalance); // profit share
             msg.sender.transfer(stake[msg.sender]); //initial stake
             hasClaimed[msg.sender] = true;
         }
         else {
-            msg.sender.transfer((endBalance*stake[msg.sender])/balance);
+            msg.sender.transfer((endBalance*stake[msg.sender])/raisedBalance);
             hasClaimed[msg.sender] = true;
         }
     }
 
     //functions to allow trading with reserve address
-
-    event TokenPulled(ERC20 token, uint amount, address sendTo);
 
     /// @dev send erc20token to the destination address
     /// @param token ERC20 The address of the token contract
@@ -327,8 +335,6 @@ contract FundWallet {
         require(token.transfer(sendTo, amount));
         TokenPulled(token, amount, sendTo);
     }
-
-    event EtherPulled(uint amount, address sendTo);
 
     ///@dev Send ether to the destination address
     function pullEther(uint amount, address sendTo) external onlyReserve {
