@@ -1,27 +1,24 @@
 pragma solidity 0.4.18;
 
-/*
+
 import "./ERC20Interface.sol";
 import "./Utils.sol";
 import "./Withdrawable.sol";
 import "./ConversionRatesInterface.sol";
 import "./SanityRatesInterface.sol";
 import "./KyberReserveInterface.sol";
-// interface for fund wallet (pull ether and tokens)
-*/
+import "./FundWalletInterface.sol";
 
 
-/// @title Kyber Reserve contract
+/// @title Kyber Fund Reserve contract
 contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    //bool public fundWalletSet;
     ConversionRatesInterface public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
-    //FundWalletInterface public fundWalletContract
+    FundWalletInterface public fundWalletContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
-    mapping(address=>address) public tokenWallet;
 
     function KyberReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
         require(_admin != address(0));
@@ -32,14 +29,6 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         admin = _admin;
         tradeEnabled = true;
     }
-
-    /*
-    function setFundWallet(FundWalletInterface _fundWalletContract) public onlyAdmin {
-    require(_fundWalletContract != address(0));
-    fundWalletContract = _fundWalletContract;
-    fundWalletSet = true;
-    }
-    */
 
     event DepositToken(ERC20 token, uint amount);
 
@@ -70,13 +59,10 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
+        require(fundWalletContract != address(0));
 
-        //if fund wallet set send eth to fund wallet
-        /*
-        if (fundWalletSet == true) {
-        trasfer msg.value to fund wallet;
-        }
-        */
+        //send funds to fundwallet
+        fundWalletContract.transfer(msg.value);
 
         require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
@@ -101,36 +87,27 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     event WithdrawAddressApproved(ERC20 token, address addr, bool approve);
 
-    //fix tokenwallet to fund wallet - do i want withdraws from reserve to be possible?
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
         approvedWithdrawAddresses[keccak256(token, addr)] = approve;
         WithdrawAddressApproved(token, addr, approve);
 
         setDecimals(token);
-        if ((tokenWallet[token] == address(0x0)) && (token != ETH_TOKEN_ADDRESS)) {
-            tokenWallet[token] = this; // by default
-            require(token.approve(this, 2 ** 255));
-        }
     }
 
-    event NewTokenWallet(ERC20 token, address wallet);
-    //remove this??
-    function setTokenWallet(ERC20 token, address wallet) public onlyAdmin {
-        require(wallet != address(0x0));
-        tokenWallet[token] = wallet;
-        NewTokenWallet(token, wallet);
+    function setFundWallet(FundWalletInterface _fundWallet) public onlyAdmin {
+        require(_fundWallet != address(0x0));
+        fundWalletContract = _fundWallet;
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);
 
-    //fix tokenwallet to fund wallet - do i want withdraws from reserve to be possible?
     function withdraw(ERC20 token, uint amount, address destination) public onlyOperator returns(bool) {
         require(approvedWithdrawAddresses[keccak256(token, destination)]);
 
         if (token == ETH_TOKEN_ADDRESS) {
-            destination.transfer(amount);
+            fundWalletContract.pullEther(amount, destination);
         } else {
-            require(token.transferFrom(tokenWallet[token], destination, amount));
+            fundWalletContract.pullToken(token, amount, destination);
         }
 
         WithdrawFunds(token, amount, destination);
@@ -161,17 +138,11 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     ////////////////////////////////////////////////////////////////////////////
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
-
-    //token wallet stuff needs to be adjusted to fund wallet - no allowances
     function getBalance(ERC20 token) public view returns(uint) {
         if (token == ETH_TOKEN_ADDRESS)
-            return this.balance;
+            return address(fundWalletContract).balance;
         else {
-            address wallet = tokenWallet[token];
-            uint balanceOfWallet = token.balanceOf(wallet);
-            uint allowanceOfWallet = token.allowance(wallet, this);
-
-            return (balanceOfWallet < allowanceOfWallet) ? balanceOfWallet : allowanceOfWallet;
+            return token.balanceOf(fundWalletContract);
         }
     }
 
@@ -205,7 +176,6 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
             return 0; // pair is not listed
         }
 
-        //check conversion rates mechanics to see if it is impacted with fundWallet
         uint rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
         uint destQty = getDestQty(src, dest, srcQty, rate);
 
@@ -226,7 +196,6 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// @param destAddress Destination address to send tokens to
     /// @param validate If true, additional validations are applicable
     /// @return true iff trade is successful
-    // FundWallet integration
     function doTrade(
         ERC20 srcToken,
         uint srcAmount,
@@ -270,17 +239,15 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         );
 
         // collect src tokens
-        //fund wallet integrate - send to fund wallet
         if (srcToken != ETH_TOKEN_ADDRESS) {
-            require(srcToken.transferFrom(msg.sender, tokenWallet[srcToken], srcAmount));
+            require(srcToken.transferFrom(msg.sender, fundWalletContract, srcAmount));
         }
 
         // send dest tokens
-        //fund wallet integrate - if eth pull eth, if token pull token
         if (destToken == ETH_TOKEN_ADDRESS) {
-            destAddress.transfer(destAmount);
+            fundWalletContract.pullEther(destAmount, destAddress);
         } else {
-            require(destToken.transferFrom(tokenWallet[destToken], destAddress, destAmount));
+            fundWalletContract.pullToken(destToken, destAmount, destAddress);
         }
 
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
