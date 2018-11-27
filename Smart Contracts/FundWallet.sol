@@ -23,6 +23,7 @@ contract FundWallet {
     uint public adminStake;
     uint public raisedBalance;
     uint public endBalance;
+    bool public timePeriodsSet;
     bool public adminStaked;
     bool public endBalanceLogged;
     mapping (address => bool) public isContributor;
@@ -51,6 +52,11 @@ contract FundWallet {
 
     modifier onlyBackupAdmin() {
         require(msg.sender == backupAdmin);
+        _;
+    }
+
+    modifier timePeriodsNotSet() {
+        assert(timePeriodsSet == false);
         _;
     }
 
@@ -148,12 +154,13 @@ contract FundWallet {
     /// @param _raiseP The amount of time during which contributors and admin can contribute to the fund. In minutes for testing.
     /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
     /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
-    function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public onlyAdmin inAdminP {
+    function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public timePeriodsNotSet {
         start = now;
         adminP = _adminP * (60 seconds);
         raiseP = _raiseP * (60 seconds);
         opperateP = _opperateP * (60 seconds);
         liquidP = _liquidP * (60 seconds);
+        timePeriodsSet == true;
     }
 
     /// @dev set or change reserve address
