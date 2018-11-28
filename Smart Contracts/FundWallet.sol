@@ -115,6 +115,11 @@ contract FundWallet {
         _;
     }
 
+    modifier inOpAndLiqP() {
+        require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP));
+        _;
+    }
+
     modifier inClaimP() {
         require(now > (start + adminP + raiseP + opperateP + liquidP));
         _;
@@ -337,14 +342,14 @@ contract FundWallet {
 
     /// @dev send erc20token to the destination address
     /// @param token ERC20 The address of the token contract
-    function pullToken(ERC20 token, uint amount, address sendTo) external onlyReserve {
+    function pullToken(ERC20 token, uint amount, address sendTo) external inOpAndLiqP onlyReserve {
         require(msg.sender == reserve);
         require(token.transfer(sendTo, amount));
         TokenPulled(token, amount, sendTo);
     }
 
     ///@dev Send ether to the destination address
-    function pullEther(uint amount, address sendTo) external onlyReserve {
+    function pullEther(uint amount, address sendTo) external inOpperateP onlyReserve {
         require(msg.sender == reserve);
         sendTo.transfer(amount);
         EtherPulled(amount, sendTo);
