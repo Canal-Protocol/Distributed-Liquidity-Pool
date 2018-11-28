@@ -11,7 +11,7 @@ import "./FundWalletInterface.sol";
 
 
 /// @title Kyber Fund Reserve contract
-contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
+contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
@@ -20,7 +20,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     FundWalletInterface public fundWalletContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
+    function KyberFundReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
         require(_admin != address(0));
         require(_ratesContract != address(0));
         require(_kyberNetwork != address(0));
@@ -139,11 +139,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     function getBalance(ERC20 token) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS)
-            return address(fundWalletContract).balance;
-        else {
-            return token.balanceOf(fundWalletContract);
-        }
+        fundWalletContract.checkBalance(token);
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {

@@ -36,12 +36,13 @@ contract FundWallet {
     uint raiseP;
     uint opperateP;
     uint liquidP;
+    //admin operational withdrawal
+    uint public lastDay;
+    uint public withdrawnToday;
     //admin reward
     uint adminCarry; //in basis points (1% = 100bps)
     //Kyber Reserve contract address
     address reserve;
-    //eth address
-    ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     //modifiers
     modifier onlyAdmin() {
@@ -133,8 +134,6 @@ contract FundWallet {
     event AdminDepositReturned(address sender, uint value);
     event TokenPulled(ERC20 token, uint amount, address sendTo);
     event EtherPulled(uint amount, address sendTo);
-    event TokenWithdraw(ERC20 token, uint amount, address sendTo);
-    event EtherWithdraw(uint amount, address sendTo);
 
 
     /// @notice Constructor, initialises admin wallets.
@@ -166,7 +165,7 @@ contract FundWallet {
         raiseP = _raiseP * (60 seconds);
         opperateP = _opperateP * (60 seconds);
         liquidP = _liquidP * (60 seconds);
-        timePeriodsSet = true;
+        timePeriodsSet == true;
     }
 
     /// @dev set or change reserve address
@@ -274,18 +273,33 @@ contract FundWallet {
         AdminDepositReturned(msg.sender, adminStake);
     }
 
-    /// @notice Funtion for admin to withdraw ERC20 token while fund is opperating.
-    /// @dev Only available to admin and in the opperating period
-    function withdrawToken(ERC20 token, uint amount, address sendTo) external onlyAdmin inOpperateP {
-        require(token.transfer(sendTo, amount));
-        TokenWithdraw(token, amount, sendTo);
+    /// @notice Funtion for admin to withdraw funds whild fund is opperating.
+    /// @dev Only available to admin and in the opperating period, and limited by their stake in 24hr period.
+    /// @param _amount Funds to withdraw.
+    function opsWithdraw(uint _amount) public onlyAdmin inOpperateP {
+        assert(isUnderLimit(_amount));
+        admin.transfer(_amount);
+        withdrawnToday += _amount;
     }
 
-    /// @notice Funtion for admin to withdraw ERC20 token while fund is opperating.
-    /// @dev Only available to admin and in the opperating period
-    function withdrawEther(uint amount, address sendTo) external onlyAdmin inOpperateP {
-        sendTo.transfer(amount);
-        EtherWithdraw(amount, sendTo);
+    /// @notice Internal function to check that withdrawal is below admin stake in 24hrs.
+    function isUnderLimit(uint amount) internal returns (bool) {
+        if (now > lastDay + 24 hours) {
+            lastDay = now;
+            withdrawnToday = 0;
+        }
+        if (withdrawnToday + amount > adminStake || withdrawnToday + amount < withdrawnToday)
+            return false;
+        return true;
+    }
+
+    /// @notice Funtion to check remaining withdrawal balance of admin.
+    function calcMaxOpsWithdraw() public constant returns (uint)  {
+        if (now > lastDay + 24 hours)
+            return adminStake;
+        if (adminStake < withdrawnToday)
+            return 0;
+        return adminStake - withdrawnToday;
     }
 
     /// @notice Funtion to log the ending balance after liquidation period. Used as point of reference to calculate profit/loss.
@@ -364,5 +378,4 @@ contract FundWallet {
         }
         else return 0;
     }
-
 }
