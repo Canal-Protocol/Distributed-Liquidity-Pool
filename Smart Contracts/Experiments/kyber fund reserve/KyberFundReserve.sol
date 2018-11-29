@@ -139,7 +139,8 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     function getBalance(ERC20 token) public view returns(uint) {
-        fundWalletContract.checkBalance(token);
+        uint bal = fundWalletContract.checkBalance(token);
+        return bal;
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {

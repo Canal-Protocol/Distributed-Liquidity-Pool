@@ -39,7 +39,7 @@ contract FundWallet {
     //admin reward
     uint adminCarry; //in basis points (1% = 100bps)
     //Kyber Reserve contract address
-    address reserve;
+    address public reserve;
     //eth address
     ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
@@ -344,8 +344,7 @@ contract FundWallet {
     }
 
     ///@dev function to check balance only returns balances in opperating and liquidating periods
-    function checkBalance(ERC20 token) external view returns (uint) {
-        require(msg.sender == reserve);
+    function checkBalance(ERC20 token) public view returns (uint) {
         if (now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP)) {
             if (token == ETH_TOKEN_ADDRESS) {
                 return this.balance;
