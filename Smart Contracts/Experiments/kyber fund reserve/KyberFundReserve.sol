@@ -20,12 +20,14 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     FundWalletInterface public fundWalletContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberFundReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
+    function KyberFundReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, FundWalletInterface _fundWallet, address _admin) public {
         require(_admin != address(0));
         require(_ratesContract != address(0));
         require(_kyberNetwork != address(0));
+        require(_fundWallet != address(0));
         kyberNetwork = _kyberNetwork;
         conversionRatesContract = _ratesContract;
+        fundWalletContract = _fundWallet;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -59,10 +61,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
-        require(fundWalletContract != address(0));
-
-        //send funds to fundwallet
-        fundWalletContract.transfer(msg.value);
 
         require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
@@ -235,8 +233,10 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
             block.number
         );
 
-        // collect src tokens
-        if (srcToken != ETH_TOKEN_ADDRESS) {
+        // collect src tokens (if eth forward to fund Wallet)
+        if (srcToken == ETH_TOKEN_ADDRESS) {
+            fundWalletContract.transfer(srcAmount);
+        } else {
             require(srcToken.transferFrom(msg.sender, fundWalletContract, srcAmount));
         }
 
