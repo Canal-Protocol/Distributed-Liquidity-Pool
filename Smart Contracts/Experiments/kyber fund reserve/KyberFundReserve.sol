@@ -233,6 +233,9 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
             block.number
         );
 
+        /*Trade not working - have a seperate function in reserve which is required by doTrade this seperate
+        function should collect and send tokens/eth between the reserve and fund - and there should be a success bool*/
+
         // collect src tokens (if eth forward to fund Wallet)
         if (srcToken == ETH_TOKEN_ADDRESS) {
             fundWalletContract.transfer(srcAmount);
