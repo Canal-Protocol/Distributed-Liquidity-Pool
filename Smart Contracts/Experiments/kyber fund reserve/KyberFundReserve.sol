@@ -139,6 +139,8 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     function getBalance(ERC20 token) public view returns(uint) {
         uint bal = fundWalletContract.checkBalance(token);
         return bal;
+
+        //require another function to do this and return the balance
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
@@ -238,6 +240,7 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
         // collect src tokens (if eth forward to fund Wallet)
         if (srcToken == ETH_TOKEN_ADDRESS) {
+          //require push eth function
             fundWalletContract.transfer(srcAmount);
         } else {
             require(srcToken.transferFrom(msg.sender, fundWalletContract, srcAmount));
@@ -245,8 +248,10 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
+          //require pull eth function
             fundWalletContract.pullEther(destAmount, destAddress);
         } else {
+          //require pull token function
             fundWalletContract.pullToken(destToken, destAmount, destAddress);
         }
 
@@ -254,4 +259,10 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
         return true;
     }
+
+    //push eth fucntion
+
+    //pull eth functions
+
+    //pull token function
 }
