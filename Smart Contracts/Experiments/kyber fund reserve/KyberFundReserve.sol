@@ -103,9 +103,11 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
         require(approvedWithdrawAddresses[keccak256(token, destination)]);
 
         if (token == ETH_TOKEN_ADDRESS) {
-            fundWalletContract.pullEther(amount, destination);
+            require(ethPuller(amount, this));
+            destination.transfer(amount);
         } else {
-            fundWalletContract.pullToken(token, amount, destination);
+            require(tokenPuller(token, amount, this));
+            require(token.transfer(destination, amount));
         }
 
         WithdrawFunds(token, amount, destination);
@@ -240,19 +242,21 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
         // collect src tokens (if eth forward to fund Wallet)
         if (srcToken == ETH_TOKEN_ADDRESS) {
-          //require push eth function
-            fundWalletContract.transfer(srcAmount);
+            //require push eth function
+            require(ethPusher(srcAmount));
         } else {
             require(srcToken.transferFrom(msg.sender, fundWalletContract, srcAmount));
         }
 
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
-          //require pull eth function
-            fundWalletContract.pullEther(destAmount, destAddress);
+          //require pull eth function then send eth to dest address;
+          require(ethPuller(destAmount, this));
+          destAddress.transfer(destAmount);
         } else {
-          //require pull token function
-            fundWalletContract.pullToken(destToken, destAmount, destAddress);
+          //require pull token function then send token to dest address;
+          require(tokenPuller(destToken, destAmount, this));
+          require(destToken.transfer(destAddress, destAmount));
         }
 
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
@@ -260,9 +264,21 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-    //push eth fucntion
+    //push eth function
+    function ethPusher(uint srcAmount) internal returns(bool) {
+        fundWalletContract.transfer(srcAmount);
+        return true;
+    }
 
     //pull eth functions
+    function ethPuller(uint destAmount, address _reserve) internal returns(bool) {
+        fundWalletContract.pullEther(destAmount, _reserve);
+        return true;
+    }
 
     //pull token function
+    function tokenPuller(ERC20 token, uint destAmount, address _reserve) internal returns(bool) {
+        fundWalletContract.pullToken(token, destAmount, _reserve);
+        return true;
+    }
 }
