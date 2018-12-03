@@ -103,10 +103,10 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
         require(approvedWithdrawAddresses[keccak256(token, destination)]);
 
         if (token == ETH_TOKEN_ADDRESS) {
-            require(ethPuller(amount, this));
+            require(ethPuller(amount));
             destination.transfer(amount);
         } else {
-            require(tokenPuller(token, amount, this));
+            require(tokenPuller(token, amount));
             require(token.transfer(destination, amount));
         }
 
@@ -139,10 +139,11 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     function getBalance(ERC20 token) public view returns(uint) {
-        uint bal = fundWalletContract.checkBalance(token);
-        return bal;
+        return fetchBalance(token);
+    }
 
-        //require another function to do this and return the balance
+    function fetchBalance(ERC20 token) public view returns(uint) {
+        return fundWalletContract.checkBalance(token);
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
@@ -251,11 +252,11 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
           //require pull eth function then send eth to dest address;
-          require(ethPuller(destAmount, this));
+          require(ethPuller(destAmount));
           destAddress.transfer(destAmount);
         } else {
           //require pull token function then send token to dest address;
-          require(tokenPuller(destToken, destAmount, this));
+          require(tokenPuller(destToken, destAmount));
           require(destToken.transfer(destAddress, destAmount));
         }
 
@@ -271,14 +272,14 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     }
 
     //pull eth functions
-    function ethPuller(uint destAmount, address _reserve) internal returns(bool) {
-        fundWalletContract.pullEther(destAmount, _reserve);
+    function ethPuller(uint destAmount) internal returns(bool) {
+        require(fundWalletContract.pullEther(destAmount));
         return true;
     }
 
     //pull token function
-    function tokenPuller(ERC20 token, uint destAmount, address _reserve) internal returns(bool) {
-        fundWalletContract.pullToken(token, destAmount, _reserve);
+    function tokenPuller(ERC20 token, uint destAmount) internal returns(bool) {
+        require(fundWalletContract.pullToken(token, destAmount));
         return true;
     }
 }

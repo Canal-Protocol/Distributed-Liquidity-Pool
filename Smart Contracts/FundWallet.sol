@@ -55,7 +55,7 @@ contract FundWallet {
     }
 
     modifier timePeriodsNotSet() {
-        assert(timePeriodsSet == false);
+        require(timePeriodsSet == false);
         _;
     }
 
@@ -70,22 +70,22 @@ contract FundWallet {
     }
 
     modifier adminHasStaked() {
-        assert(adminStaked == true);
+        require(adminStaked == true);
         _;
     }
 
     modifier adminHasNotStaked() {
-        assert(adminStaked == false);
+        require(adminStaked == false);
         _;
     }
 
     modifier endBalanceNotLogged() {
-        assert(endBalanceLogged == false);
+        require(endBalanceLogged == false);
         _;
     }
 
     modifier endBalanceIsLogged() {
-        assert(endBalanceLogged == true);
+        require(endBalanceLogged == true);
         _;
     }
 
@@ -326,21 +326,23 @@ contract FundWallet {
 
     //functions to allow trading with reserve address
 
-    /// @dev send erc20token to the destination address
+    /// @dev send erc20token to the reserve address
     /// @param token ERC20 The address of the token contract
-    function pullToken(ERC20 token, uint amount, address sendTo) external {
+    function pullToken(ERC20 token, uint amount) external returns (bool){
         require(msg.sender == reserve);
         require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP));
-        require(token.transfer(sendTo, amount));
-        TokenPulled(token, amount, sendTo);
+        require(token.transfer(reserve, amount));
+        TokenPulled(token, amount, reserve);
+        return true;
     }
 
-    ///@dev Send ether to the destination address
-    function pullEther(uint amount, address sendTo) external {
+    ///@dev Send ether to the reserve address
+    function pullEther(uint amount) external returns (bool){
         require(msg.sender == reserve);
         require(now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP));
-        sendTo.transfer(amount);
-        EtherPulled(amount, sendTo);
+        reserve.transfer(amount);
+        EtherPulled(amount, reserve);
+        return true;
     }
 
     ///@dev function to check balance only returns balances in opperating and liquidating periods
