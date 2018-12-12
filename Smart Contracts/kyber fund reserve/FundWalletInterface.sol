@@ -1,7 +1,5 @@
 pragma solidity 0.4.18;
 
-/// @dev interface to allow for Kyber Fund Reserve integration with Fund Wallet
-
 import "./ERC20Interface.sol";
 
 

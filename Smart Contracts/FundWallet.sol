@@ -347,7 +347,7 @@ contract FundWallet {
 
     ///@dev function to check balance only returns balances in opperating and liquidating periods
     function checkBalance(ERC20 token) public view returns (uint) {
-        if (now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP)) {
+        if (now < (start + adminP +raiseP + opperateP) && now > (start + adminP + raiseP)) {
             if (token == ETH_TOKEN_ADDRESS) {
                 return this.balance;
             }
