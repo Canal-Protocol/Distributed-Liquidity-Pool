@@ -14,10 +14,12 @@ Currently Implemented:
 * Change admin
 * Comprehensive comments.
 * Push and pull funds from FundWallet.
-
-To Do:
-
-* Governance mechanisms (set max investment, cease fund from admin).
+* Simple Governance mechanisms.
 * Integrate with Kyber Reserve.
+
+### Kyber Fund Reserve:
+Currently Implemented:
+
+* Integration with the above Fund Wallet.
 
 **Do not use outside of test environments**
