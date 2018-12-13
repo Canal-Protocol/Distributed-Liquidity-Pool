@@ -10,7 +10,7 @@ import "./KyberReserveInterface.sol";
 import "./FundWalletInterface.sol";
 
 
-/// @title Kyber Fund Reserve contract
+/// @title Kyber Fund Reserve contract - Kyber Reserve integrated with Fund Wallet.
 contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
@@ -138,6 +138,8 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     ////////////////////////////////////////////////////////////////////////////
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
+    
+    /// get balance integrated with fund wallet
     function getBalance(ERC20 token) public view returns(uint) {
         return fetchBalance(token);
     }
@@ -237,9 +239,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
             0,
             block.number
         );
-
-        /*Trade not working - have a seperate function in reserve which is required by doTrade this seperate
-        function should collect and send tokens/eth between the reserve and fund - and there should be a success bool*/
 
         // collect src tokens (if eth forward to fund Wallet)
         if (srcToken == ETH_TOKEN_ADDRESS) {
