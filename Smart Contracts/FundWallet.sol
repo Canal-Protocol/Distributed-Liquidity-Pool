@@ -147,6 +147,7 @@ contract FundWallet {
     }
 
     /// @notice function to set time periods.
+    /// @dev admin period starts as soon as this function is executed.
     /// @param _adminP The amount of time during which the admin can set fund parameters and add contributors.
     /// @param _raiseP The amount of time during which contributors and admin can contribute to the fund. In minutes for testing.
     /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
@@ -189,7 +190,7 @@ contract FundWallet {
     }
 
     /// @notice Function to remove contributor address.
-    /// @dev Only available to admin and in the raising period. Returns balance of contributor if they have deposited.
+    /// @dev Only available to admin and in the admin period.
     /// @param _contributor Address of the contributor to be removed.
     function removeContributor(address _contributor) public onlyAdmin inAdminP {
         require(isContributor[_contributor]);
@@ -209,7 +210,7 @@ contract FundWallet {
     }
 
     /// @notice Function for contributor to deposit funds.
-    /// @dev Only available to contributors after admin had deposited their stake, and in the raising period.
+    /// @dev Only available to contributors after admin has deposited their stake, and in the raising period.
     function contributorDeposit() public onlyContributor adminHasStaked inRaiseP payable {
         if (adminStake >= msg.value && msg.value > 0 && stake[msg.sender] < adminStake) {
             raisedBalance += msg.value;
@@ -255,7 +256,7 @@ contract FundWallet {
         }
     }
 
-    /// @notice Funtion for admin to reclaim their contribution/stake.
+    /// @notice Function for admin to reclaim their contribution/stake.
     /// @dev Only available to admin and in the raising period and if admin is the only one who has contributed to the fund.
     function adminRefund() public onlyAdmin adminHasStaked inRaiseP {
         require(raisedBalance == adminStake);
@@ -265,22 +266,23 @@ contract FundWallet {
         AdminDepositReturned(msg.sender, adminStake);
     }
 
-    /// @notice Funtion for admin to withdraw ERC20 token while fund is opperating.
+    /// @notice Function for admin to withdraw ERC20 token while fund is opperating.
     /// @dev Only available to admin and in the opperating period
     function withdrawToken(ERC20 token, uint amount, address sendTo) external onlyAdmin inOpperateP {
         require(token.transfer(sendTo, amount));
         TokenWithdraw(token, amount, sendTo);
     }
 
-    /// @notice Funtion for admin to withdraw ERC20 token while fund is opperating.
+    /// @notice Function for admin to withdraw ERC20 token while fund is opperating.
     /// @dev Only available to admin and in the opperating period
     function withdrawEther(uint amount, address sendTo) external onlyAdmin inOpperateP {
         sendTo.transfer(amount);
         EtherWithdraw(amount, sendTo);
     }
 
-    /// @notice Funtion to log the ending balance after liquidation period. Used as point of reference to calculate profit/loss.
+    /// @notice Function to log the ending balance after liquidation period. Used as point of reference to calculate profit/loss.
     /// @dev Only available in claim period and only available once.
+    /// @dev available to anyone.
     function logEndBal() public inClaimP endBalanceNotLogged {
         endBalance = address(this).balance;
         endBalanceLogged = true;
