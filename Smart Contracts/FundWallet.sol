@@ -152,7 +152,7 @@ contract FundWallet {
     /// @param _raiseP The amount of time during which contributors and admin can contribute to the fund. In minutes for testing.
     /// @param _opperateP The amount of time during which the fund is actively trading/investing. In minutes for testing.
     /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
-    function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public timePeriodsNotSet {
+    function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public onlyAdmin timePeriodsNotSet {
         start = now;
         adminP = _adminP * (60 seconds);
         raiseP = _raiseP * (60 seconds);
