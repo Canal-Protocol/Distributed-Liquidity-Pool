@@ -133,6 +133,7 @@ contract FundWallet {
     /// @param _backupAdmin Is an address which can change the admin address - recommend cold wallet.
     function FundWallet(address _admin, address _backupAdmin) public {
         require(_admin != address(0));
+        require(_backupAdmin != address(0));
         admin = _admin;
         backupAdmin = _backupAdmin;
     }
