@@ -22,13 +22,13 @@ contract FundWallet {
     mapping (address => uint) public stake;
     address[] public contributors;
     //experimental time periods
-    uint start;
-    uint adminP;
-    uint raiseP;
-    uint opperateP;
-    uint liquidP;
+    uint public start;
+    uint public adminP;
+    uint public raiseP;
+    uint public opperateP;
+    uint public liquidP;
     //admin reward
-    uint adminCarry; //in basis points (1% = 100bps)
+    uint public adminCarry; //in basis points (1% = 100bps)
     //Kyber Reserve contract address
     address public reserve;
     //eth address
