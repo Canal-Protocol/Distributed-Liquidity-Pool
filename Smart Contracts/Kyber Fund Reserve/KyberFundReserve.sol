@@ -7,11 +7,10 @@ import "./Withdrawable.sol";
 import "./ConversionRatesInterface.sol";
 import "./SanityRatesInterface.sol";
 import "./KyberReserveInterface.sol";
-/// @dev fund wallet integration 
 import "./FundWalletInterface.sol";
 
 
-/// @title Kyber Fund Reserve contract - Kyber Reserve integrated with Fund Wallet.
+/// @title Kyber Fund Reserve contract
 contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
@@ -21,7 +20,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     FundWalletInterface public fundWalletContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    /// @dev addition of fund wallet
     function KyberFundReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, FundWalletInterface _fundWallet, address _admin) public {
         require(_admin != address(0));
         require(_ratesContract != address(0));
@@ -94,7 +92,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
         setDecimals(token);
     }
 
-    /// @dev set/change fund wallet address
     function setFundWallet(FundWalletInterface _fundWallet) public onlyAdmin {
         require(_fundWallet != address(0x0));
         fundWalletContract = _fundWallet;
@@ -141,8 +138,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     ////////////////////////////////////////////////////////////////////////////
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
-    
-    /// @dev get balance integrated with fund wallet
     function getBalance(ERC20 token) public view returns(uint) {
         return fetchBalance(token);
     }
@@ -195,7 +190,6 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
     }
 
     /// @dev do a trade
-    /// @dev integrated with fund wallet
     /// @param srcToken Src token
     /// @param srcAmount Amount of src token
     /// @param destToken Destination token
@@ -244,6 +238,7 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
             block.number
         );
 
+
         // collect src tokens (if eth forward to fund Wallet)
         if (srcToken == ETH_TOKEN_ADDRESS) {
             //require push eth function
@@ -252,7 +247,7 @@ contract KyberFundReserve is KyberReserveInterface, Withdrawable, Utils {
             require(srcToken.transferFrom(msg.sender, fundWalletContract, srcAmount));
         }
 
-        // send dest tokens from fund wallet
+        // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
           //require pull eth function then send eth to dest address;
           require(ethPuller(destAmount));
