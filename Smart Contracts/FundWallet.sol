@@ -6,119 +6,19 @@ pragma solidity 0.4.18;
 
 import "./ERC20Interface.sol";
 
-contract FundWallet {
+import "./FwPermissions.sol";
 
-    //storage
-    address public admin;
-    address public backupAdmin;
+contract FundWallet is FwPermissions {
+
     uint public adminStake;
     uint public raisedBalance;
     uint public endBalance;
-    bool public timePeriodsSet;
-    bool public adminStaked;
-    bool public endBalanceLogged;
-    mapping (address => bool) public isContributor;
-    mapping (address => bool) public hasClaimed;
     mapping (address => uint) public stake;
-    address[] public contributors;
-    //experimental time periods
-    uint public start;
-    uint public adminP;
-    uint public raiseP;
-    uint public opperateP;
-    uint public liquidP;
     //admin reward
     uint public adminCarry; //in basis points (1% = 100bps)
-    //Kyber Reserve contract address
-    address public reserve;
+
     //eth address
     ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-
-    //modifiers
-    modifier onlyAdmin() {
-        require(msg.sender == admin);
-        _;
-    }
-
-    modifier onlyBackupAdmin() {
-        require(msg.sender == backupAdmin);
-        _;
-    }
-
-    modifier timePeriodsNotSet() {
-        require(timePeriodsSet == false);
-        _;
-    }
-
-    modifier timePeriodsAreSet() {
-        require(timePeriodsSet == true);
-        _;
-    }
-
-    modifier onlyReserve() {
-        require(msg.sender == reserve);
-        _;
-    }
-
-    modifier onlyContributor() {
-        require(isContributor[msg.sender]);
-        _;
-    }
-
-    modifier adminHasStaked() {
-        require(adminStaked == true);
-        _;
-    }
-
-    modifier adminHasNotStaked() {
-        require(adminStaked == false);
-        _;
-    }
-
-    modifier endBalanceNotLogged() {
-        require(endBalanceLogged == false);
-        _;
-    }
-
-    modifier endBalanceIsLogged() {
-        require(endBalanceLogged == true);
-        _;
-    }
-
-    modifier hasNotClaimed() {
-        require(!hasClaimed[msg.sender]);
-        _;
-    }
-
-    modifier inAdminP() {
-        require(now < (start + adminP));
-        _;
-    }
-
-    modifier inRaiseP() {
-        require(now < (start + adminP + raiseP) && now > (start + adminP));
-        _;
-    }
-
-    modifier inOpperateP() {
-        require(now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP));
-        _;
-    }
-
-    modifier inLiquidP() {
-        require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP + opperateP));
-        _;
-    }
-
-    modifier inOpAndLiqP() {
-        require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP));
-        _;
-    }
-
-    modifier inClaimP() {
-        require(now > (start + adminP + raiseP + opperateP + liquidP));
-        _;
-    }
 
     //events
     event ContributorAdded(address _contributor);
@@ -325,18 +225,14 @@ contract FundWallet {
 
     /// @dev send erc20token to the reserve address
     /// @param token ERC20 The address of the token contract
-    function pullToken(ERC20 token, uint amount) external returns (bool){
-        require(msg.sender == reserve);
-        require(now < (start + adminP + raiseP + opperateP + liquidP) && now > (start + adminP + raiseP));
+    function pullToken(ERC20 token, uint amount) external onlyReserve inOpAndLiqP returns (bool){
         require(token.transfer(reserve, amount));
         TokenPulled(token, amount, reserve);
         return true;
     }
 
     ///@dev Send ether to the reserve address
-    function pullEther(uint amount) external returns (bool){
-        require(msg.sender == reserve);
-        require(now < (start + adminP + raiseP + opperateP) && now > (start + adminP + raiseP));
+    function pullEther(uint amount) external onlyReserve inOpperateP returns (bool){
         reserve.transfer(amount);
         EtherPulled(amount, reserve);
         return true;
