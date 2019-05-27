@@ -14,7 +14,7 @@ Broadly this can be split into two main components; fund management, and DEX int
 ## Components
 
 ### Fund Management
-The first iteration of fund management will be a [Fund Wallet](https://github.com/Canal-Protocol/Distributed-Liquidity-Pool/blob/master/Smart%20Contracts/FundWallet.sol) which will be responsible for the following functions: fund creation, contribution, incentive schemes, and payouts.
+The first iteration of fund management will be a [Fund Wallet](https://github.com/Canal-Protocol/Distributed-Liquidity-Pool/blob/master/Smart%20Contracts/FundWallet.sol) which will be responsible for the following functions: fund creation, contribution, incentive schemes, and payouts. Please note that the modifiers and relevant variables are now stored in [FwPermissions.sol](https://github.com/Canal-Protocol/Distributed-Liquidity-Pool/blob/master/Smart%20Contracts/FwPermissions.sol) - this was done for building more complete tests.
 
 ### DEX Integration
 Our integration for the above will be with [Kyber Network](https://kyber.network/). The fund wallet will act as a feed to [Kyber Fund Reserve](https://github.com/Canal-Protocol/Distributed-Liquidity-Pool/tree/master/Smart%20Contracts/Kyber%20Fund%20Reserve) which is based on Kyber's original Reserve, with additional functionailty that allows for it push and pull funds from the Fund Wallet.
