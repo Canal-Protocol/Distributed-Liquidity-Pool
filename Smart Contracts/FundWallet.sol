@@ -59,10 +59,10 @@ contract FundWallet is FwPermissions {
     /// @param _liquidP The amount of time the admin has to liquidate the fund into base currency - Ether. In minutes for testing.
     function setTimePeriods(uint _adminP, uint _raiseP, uint _opperateP, uint _liquidP) public onlyAdmin timePeriodsNotSet {
         start = now;
-        adminP = _adminP * (60 seconds);
-        raiseP = _raiseP * (60 seconds);
-        opperateP = _opperateP * (60 seconds);
-        liquidP = _liquidP * (60 seconds);
+        adminP = _adminP * (60 minutes);
+        raiseP = _raiseP * (60 minutes);
+        opperateP = _opperateP * (60 minutes);
+        liquidP = _liquidP * (60 minutes);
         timePeriodsSet = true;
     }
 
@@ -117,7 +117,7 @@ contract FundWallet is FwPermissions {
     /// @notice Function for contributor to deposit funds.
     /// @dev Only available to contributors after admin had deposited their stake, and in the raising period.
     function contributorDeposit() public timePeriodsAreSet onlyContributor adminHasStaked inRaiseP payable {
-        if (adminStake >= msg.value && msg.value > 0 && stake[msg.sender] < adminStake) {
+        if (adminStake >= msg.value && msg.value > 0 && (stake[msg.sender] + msg.value) < adminStake) {
             raisedBalance += msg.value;
             stake[msg.sender] += msg.value;
             ContributorDeposit(msg.sender, msg.value);
