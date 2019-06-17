@@ -9,6 +9,8 @@ Broadly this can be split into two main components; fund management, and DEX int
 
 ### [Unit Tests.](https://github.com/Canal-Protocol/dlp-Kyber-test-suite)
 
+### [Front End.](https://github.com/ads365/canalfrontend/blob/master/README.md)
+
 **Please Note that this entire repository is a work in progress.** 
 
 ## Components
